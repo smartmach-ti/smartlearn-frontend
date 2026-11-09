@@ -5,6 +5,8 @@ import {
   ArrowLeft, ArrowRight, Award, Check, CheckCircle2, ClipboardList, Cpu,
   Lock, LogOut, Mail, MonitorCog, PlayCircle, RotateCcw, ShieldCheck, X, XCircle,
 } from "lucide-react";
+import { CertificateModal } from "@/components/CertificateModal";
+import { CertificateData, generateCertificateCode } from "@/utils/certificate";
 
 /* ------------------------------------------------------------------ */
 /* Mock data                                                          */
@@ -60,23 +62,42 @@ const PASS_THRESHOLD = 60;
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("login");
+  const [studentName, setStudentName] = useState("Operador");
   const [courseId, setCourseId] = useState<CourseId | null>(null);
   const course = COURSES.find((c) => c.id === courseId) ?? null;
 
   return (
     <main className="min-h-screen">
-      {screen === "login" && <LoginScreen onLogin={() => setScreen("courses")} />}
+      {screen === "login" && (
+        <LoginScreen
+          onLogin={(name) => {
+            if (name) setStudentName(name);
+            setScreen("courses");
+          }}
+        />
+      )}
       {screen === "courses" && (
         <CoursesScreen
+          studentName={studentName}
           onLogout={() => setScreen("login")}
           onSelect={(id) => { setCourseId(id); setScreen("player"); }}
         />
       )}
       {screen === "player" && course && (
-        <PlayerScreen key={course.id} course={course} onBack={() => setScreen("courses")} onQuiz={() => setScreen("quiz")} />
+        <PlayerScreen
+          key={course.id}
+          studentName={studentName}
+          course={course}
+          onBack={() => setScreen("courses")}
+          onQuiz={() => setScreen("quiz")}
+        />
       )}
       {screen === "quiz" && course && (
-        <QuizScreen course={course} onExit={() => setScreen("courses")} />
+        <QuizScreen
+          studentName={studentName}
+          course={course}
+          onExit={() => setScreen("courses")}
+        />
       )}
     </main>
   );
@@ -102,7 +123,7 @@ function Logo({ size = "md" }: { size?: "md" | "lg" }) {
   );
 }
 
-function Header({ onLogout, onBack }: { onLogout: () => void; onBack?: () => void }) {
+function Header({ studentName = "Operador", onLogout, onBack }: { studentName?: string; onLogout: () => void; onBack?: () => void }) {
   return (
     <header className="sticky top-0 z-10 border-b border-neutral-200/70 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
@@ -115,7 +136,7 @@ function Header({ onLogout, onBack }: { onLogout: () => void; onBack?: () => voi
           <Logo />
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-neutral-500">Olá, <span className="font-medium text-neutral-900">Operador</span></span>
+          <span className="text-sm text-neutral-500">Olá, <span className="font-medium text-neutral-900">{studentName}</span></span>
           <button id="logout-button" onClick={onLogout} className="flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-1.5 text-sm text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-900">
             <LogOut size={15} /> Sair
           </button>
@@ -129,9 +150,10 @@ function Header({ onLogout, onBack }: { onLogout: () => void; onBack?: () => voi
 /* 1. Login                                                           */
 /* ------------------------------------------------------------------ */
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+function LoginScreen({ onLogin }: { onLogin: (name: string) => void }) {
+  const [name, setName] = useState("Carlos Oliveira");
+  const [email, setEmail] = useState("operador@smartmach.com.br");
+  const [password, setPassword] = useState("••••••••");
 
   return (
     <div className="grid min-h-screen place-items-center px-6">
@@ -142,12 +164,13 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <form
-          onSubmit={(e) => { e.preventDefault(); onLogin(); }}
-          className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+          onSubmit={(e) => { e.preventDefault(); onLogin(name.trim() || "Operador"); }}
+          className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
         >
-          <Field id="email" label="E-mail" type="email" value={email} onChange={setEmail} placeholder="voce@empresa.com" icon={<Mail size={16} />} />
+          <Field id="name" label="Nome do Operador (para certificado)" type="text" value={name} onChange={setName} placeholder="Seu nome completo" icon={<Award size={16} />} />
+          <Field id="email" label="E-mail corporativo" type="email" value={email} onChange={setEmail} placeholder="voce@empresa.com" icon={<Mail size={16} />} />
           <Field id="password" label="Senha" type="password" value={password} onChange={setPassword} placeholder="••••••••" icon={<Lock size={16} />} />
-          <button id="login-button" type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 py-3 text-sm font-medium text-white transition hover:bg-neutral-800 active:scale-[0.99]">
+          <button id="login-button" type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 py-3 text-sm font-medium text-white transition hover:bg-neutral-800 active:scale-[0.99] mt-2">
             Acessar Plataforma <ArrowRight size={16} />
           </button>
         </form>
@@ -181,10 +204,10 @@ function Field(props: { id: string; label: string; type: string; value: string; 
 /* 2. Courses                                                         */
 /* ------------------------------------------------------------------ */
 
-function CoursesScreen({ onLogout, onSelect }: { onLogout: () => void; onSelect: (id: CourseId) => void }) {
+function CoursesScreen({ studentName, onLogout, onSelect }: { studentName: string; onLogout: () => void; onSelect: (id: CourseId) => void }) {
   return (
     <>
-      <Header onLogout={onLogout} />
+      <Header studentName={studentName} onLogout={onLogout} />
       <section className="mx-auto max-w-5xl px-6 py-16 animate-fade-up">
         <p className="text-xs font-medium uppercase tracking-widest text-brand-600">Seu aprendizado</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Trilhas de Conhecimento</h1>
@@ -225,7 +248,7 @@ function CoursesScreen({ onLogout, onSelect }: { onLogout: () => void; onSelect:
 /* 3. Player                                                          */
 /* ------------------------------------------------------------------ */
 
-function PlayerScreen({ course, onBack, onQuiz }: { course: Course; onBack: () => void; onQuiz: () => void }) {
+function PlayerScreen({ studentName, course, onBack, onQuiz }: { studentName: string; course: Course; onBack: () => void; onQuiz: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [completed, setCompleted] = useState<number[]>([]);
   const lesson = course.lessons[activeIndex];
@@ -243,7 +266,7 @@ function PlayerScreen({ course, onBack, onQuiz }: { course: Course; onBack: () =
 
   return (
     <>
-      <Header onLogout={onBack} onBack={onBack} />
+      <Header studentName={studentName} onLogout={onBack} onBack={onBack} />
       <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 lg:grid-cols-[7fr_3fr]">
         {/* Main column */}
         <section key={lesson.id} className="animate-fade-up">
@@ -357,10 +380,12 @@ function LessonThumb(props: { id: string; title: string; meta: string; active: b
 /* 4. Quiz                                                            */
 /* ------------------------------------------------------------------ */
 
-function QuizScreen({ course, onExit }: { course: Course; onExit: () => void }) {
+function QuizScreen({ studentName, course, onExit }: { studentName: string; course: Course; onExit: () => void }) {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(Array(QUIZ.length).fill(null));
   const [finished, setFinished] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [certificateData, setCertificateData] = useState<CertificateData | null>(null);
 
   const q = QUIZ[current];
   const selected = answers[current];
@@ -368,6 +393,23 @@ function QuizScreen({ course, onExit }: { course: Course; onExit: () => void }) 
   const score = answers.filter((a, i) => a === QUIZ[i].correct).length;
   const percent = Math.round((score / QUIZ.length) * 100);
   const passed = percent >= PASS_THRESHOLD;
+
+  const handleOpenCertificate = () => {
+    const code = generateCertificateCode();
+    // Exemplo de URL de validação com o token
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://smartlearn.smartmach.com.br";
+    const validationUrl = `${origin}/validar?code=${code}`;
+
+    setCertificateData({
+      studentName: studentName || "Operador SmartMach",
+      courseName: `Sistema ${course.name} - ${course.tagline}`,
+      workload: "4 horas complementares",
+      completionDate: new Date().toLocaleDateString("pt-BR"),
+      certificateCode: code,
+      validationUrl,
+    });
+    setShowCertificate(true);
+  };
 
   const choose = (i: number) => {
     if (answered) return;
@@ -383,6 +425,7 @@ function QuizScreen({ course, onExit }: { course: Course; onExit: () => void }) 
     setAnswers(Array(QUIZ.length).fill(null));
     setCurrent(0);
     setFinished(false);
+    setShowCertificate(false);
   };
 
   return (
@@ -481,8 +524,12 @@ function QuizScreen({ course, onExit }: { course: Course; onExit: () => void }) 
 
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
               {passed ? (
-                <button id="certificate-button" className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-emerald-700">
-                  <Award size={16} /> Gerar Certificado
+                <button
+                  id="certificate-button"
+                  onClick={handleOpenCertificate}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 active:scale-95 shadow-sm hover:shadow"
+                >
+                  <Award size={16} /> Ver e Baixar Certificado
                 </button>
               ) : (
                 <button id="retry-quiz-button" onClick={restart} className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-red-700">
@@ -496,6 +543,13 @@ function QuizScreen({ course, onExit }: { course: Course; onExit: () => void }) 
           </div>
         )}
       </div>
+
+      {showCertificate && certificateData && (
+        <CertificateModal
+          data={certificateData}
+          onClose={() => setShowCertificate(false)}
+        />
+      )}
     </div>
   );
 }
